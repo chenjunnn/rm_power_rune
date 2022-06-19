@@ -172,10 +172,15 @@ bool Detector::findCenter(cv::Point2f & center)
   }
 
   // Get the roi of the center
-  std::vector<cv::Point> center_roi_pts = {
-    sorted_pts[0] + 6.5 * short_side, sorted_pts[1] + 6.5 * short_side, sorted_pts[1],
-    sorted_pts[0]};
-  auto roi = getROI(center_roi_pts);
+  cv::Point2f roi_center = armor_.center + short_side * 6.0;
+  cv::Mat mask = cv::Mat::zeros(bin_.size(), CV_8UC1);
+  int radius = cv::norm(short_side) * 8.0;
+  cv::circle(mask, roi_center, radius, cv::Scalar(255), -1);
+  cv::Mat roi = bin_.mul(mask);
+
+  // Close morphological operation
+  cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+  cv::morphologyEx(roi, roi, cv::MORPH_CLOSE, kernel);
 
   // Find the center
   std::vector<std::vector<cv::Point>> contours;
