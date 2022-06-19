@@ -3,10 +3,13 @@
 #include <gtest/gtest.h>
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <opencv2/core/types.hpp>
+#include <opencv2/imgproc.hpp>
 #include <opencv2/opencv.hpp>
 
 // STL
 #include <memory>
+#include <vector>
 
 #include "rune_detector/detector.hpp"
 
@@ -15,6 +18,7 @@ std::unique_ptr<rm_power_rune::Detector> detector;
 cv::Mat src;
 cv::Mat bin;
 cv::Mat floodfilled;
+cv::Point2f center;
 
 TEST(test_detector, init)
 {
@@ -58,4 +62,28 @@ TEST(test_detector, findArmor)
   cv::ellipse(src_with_armor, armor, cv::Scalar(0, 255, 0), 2);
 
   cv::imwrite("/tmp/armor.png", src_with_armor);
+}
+
+TEST(test_detector, findCenter)
+{
+  EXPECT_TRUE(detector->findCenter(center));
+
+  // Draw the center
+  cv::Mat src_with_center = src.clone();
+  cv::cvtColor(src_with_center, src_with_center, cv::COLOR_RGB2BGR);
+  cv::circle(src_with_center, center, 2, cv::Scalar(0, 255, 0), 2);
+
+  cv::imwrite("/tmp/center.png", src_with_center);
+}
+
+TEST(test_detector, drawResult)
+{
+  cv::Mat result = src.clone();
+  cv::cvtColor(result, result, cv::COLOR_RGB2BGR);
+
+  auto pts = detector->sorted_pts;
+  std::vector<cv::Point> pts_vec = {pts[0], pts[3], pts[2], pts[1], center};
+  cv::polylines(result, pts_vec, true, cv::Scalar(0, 255, 0), 2);
+
+  cv::imwrite("/tmp/result.png", result);
 }

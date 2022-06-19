@@ -23,7 +23,7 @@ public:
 
   bool findArmor(cv::RotatedRect & armor);
 
-  cv::Point findCenter();
+  bool findCenter(cv::Point2f & center);
 
   enum class Color {
     RED,
@@ -36,11 +36,14 @@ public:
   double min_armor_ratio, max_armor_ratio;
   double min_strip_ratio, max_strip_ratio;
 
+  std::array<cv::Point2f, 4> sorted_pts;
+
 private:
   cv::Mat bin_;
   cv::Mat floodfilled_;
 
   cv::RotatedRect armor_;
+  cv::Point2f center_;
 };
 
 }  // namespace rm_power_rune
