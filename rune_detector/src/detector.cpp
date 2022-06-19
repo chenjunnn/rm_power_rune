@@ -31,6 +31,10 @@ cv::Mat Detector::binarize(const cv::Mat & src)
   // Threshold the image
   cv::threshold(diff, bin_, bin_thresh, 255, cv::THRESH_BINARY);
 
+  // Close morphological operation
+  cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
+  cv::morphologyEx(bin_, bin_, cv::MORPH_CLOSE, kernel);
+
   return bin_;
 }
 
@@ -61,6 +65,10 @@ bool Detector::findArmor(cv::RotatedRect & armor)
   std::vector<std::vector<cv::Point>> contours;
   cv::findContours(floodfilled_, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
+  // TODO
+  cv::Mat bin_clone = floodfilled_.clone();
+  cv::cvtColor(bin_clone, bin_clone, cv::COLOR_GRAY2RGB);
+
   std::vector<cv::RotatedRect> armors;
   std::vector<cv::RotatedRect> strips;
   for (const auto & contour : contours) {
@@ -73,15 +81,22 @@ bool Detector::findArmor(cv::RotatedRect & armor)
       float ratio = rect.size.width > rect.size.height ? rect.size.width / rect.size.height
                                                        : rect.size.height / rect.size.width;
 
-      if (min_armor_ratio < ratio && ratio < max_armor_ratio) {
+      cv::putText(
+        bin_clone, std::to_string(rect.size.area()), rect.center, cv::FONT_HERSHEY_SIMPLEX, 0.5,
+        cv::Scalar(0, 255, 0), 2);
+
+      if (min_armor_ratio < ratio && ratio < max_armor_ratio && rect.size.area() < max_armor_area) {
         armors.emplace_back(rect);
-      } else if (min_strip_ratio < ratio && ratio < max_strip_ratio) {
+      } else {
         strips.emplace_back(rect);
       }
     } else {
       continue;
     }
   }
+
+  // cv::imshow("armor", bin_clone);
+  // cv::waitKey(1);
 
   // Find available armor
   auto armor_it = armors.begin();
@@ -178,26 +193,35 @@ bool Detector::findCenter(cv::Point2f & center)
   cv::circle(mask, roi_center, radius, cv::Scalar(255), -1);
   cv::Mat roi = bin_.mul(mask);
 
-  // Close morphological operation
-  cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
-  cv::morphologyEx(roi, roi, cv::MORPH_CLOSE, kernel);
+  // TODO
+  cv::Mat bin_clone = bin_.clone();
+  cv::cvtColor(bin_clone, bin_clone, cv::COLOR_GRAY2RGB);
+  cv::circle(bin_clone, roi_center, radius, cv::Scalar(0, 255, 0), 2);
 
   // Find the center
   std::vector<std::vector<cv::Point>> contours;
   cv::findContours(roi, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
   for (const auto & contour : contours) {
-    float radius;
-    cv::minEnclosingCircle(contour, center_, radius);
+    cv::Rect rect = cv::boundingRect(contour);
 
-    // Normalize the radius
-    radius /= std::max(armor_.size.width, armor_.size.height);
+    cv::putText(
+      bin_clone, std::to_string(rect.area()), rect.br(), cv::FONT_HERSHEY_SIMPLEX, 0.5,
+      cv::Scalar(0, 255, 0), 2);
 
-    if (radius < 0.22) {
-      center = center_;
+    cv::putText(
+      bin_clone, std::to_string(rect.size().aspectRatio()), rect.tl(), cv::FONT_HERSHEY_SIMPLEX, 0.5,
+      cv::Scalar(0, 255, 0), 2);
+
+    if (250 < rect.area() && rect.area() < 400) {
+      center = center_ = (rect.br() + rect.tl()) * 0.5;
       return true;
     }
   }
+
+  // TODO
+  // cv::imshow("center", bin_clone);
+  // cv::waitKey(1);
 
   return false;
 }

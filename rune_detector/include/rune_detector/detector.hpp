@@ -32,7 +32,7 @@ public:
 
   int bin_thresh;
 
-  int min_armor_area;
+  int min_armor_area, max_armor_area;
   double min_armor_ratio, max_armor_ratio;
   double min_strip_ratio, max_strip_ratio;
 
